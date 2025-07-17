@@ -1,56 +1,62 @@
 package parser
 
 import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
+	"strconv"
+	"strings"
 )
 
-func ReadFile(fileName string) (string, error) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		return "", err
-	}
-	defer func(file *os.File) {
-		closeErr := file.Close()
-		if err != nil {
-			err = errors.Join(err, closeErr)
-		}
-	}(file)
-	
-	data, err := io.ReadAll(file)
-	if err != nil {
-		return "", err
-	}
-	
-	//f, err := os.ReadFile(fileName)
-	//if err != nil {
-	//	return "", err
-	//}
-	
-	strFile := string(data)
-	
-	return strFile, nil
+type Command struct {
+	Type  string // "cap", "up", "bin" and others
+	Count int    // 1, 2 or none (will default to 1) (the number of previous tokens to apply)
 }
 
-func WriteFile(fileName string, input []string) (bool, error) {
-	file, err := os.Create(fileName)
-	if err != nil {
-		return false, err
+func ParseCommand(token string) (*Command, bool) {
+	token = strings.TrimSpace(token)
+
+	runes := []rune(token)
+
+	length1 := len(runes)
+	if length1 < 3 || token[0] != '(' || token[length1-1] != ')' {
+		return nil, false
 	}
-	
-	defer func(file *os.File) {
-		if closeErr := file.Close(); err != nil {
-			err = errors.Join(err, closeErr)
-		}
-	}(file)
-	
-	for _, s := range input {
-		if _, err := fmt.Fprint(file, s); err != nil {
-			return false, err
-		}
+
+	// contents of the command
+	body := token[1 : length1-1]
+	parts := strings.Split(body, ",")
+
+	// checking if there is more than 2 parts (e.g. (cap, 2, fasdf)
+	length2 := len(parts)
+	if length2 > 2 {
+		return nil, false
 	}
-	
-	return true, nil
+
+	// default count is 1
+	cmd := Command{Count: 1}
+
+	// removing the whitespaces in type
+	cmd.Type = strings.TrimSpace(parts[0])
+	cmd.Type = strings.ToLower(cmd.Type)
+	if cmd.Type == "" {
+		return nil, false
+	}
+
+	if len(parts) == 2 {
+		rawCount := strings.TrimSpace(parts[1])
+		if rawCount == "" {
+			return nil, false
+		}
+
+		n, err := strconv.Atoi(rawCount)
+		if err != nil || n <= 0 {
+			return nil, false
+		}
+		cmd.Count = n
+	}
+
+	switch cmd.Type {
+	case "cap", "low", "up", "bin", "hex":
+		return &cmd, true
+	default:
+		return nil, false
+	}
 }

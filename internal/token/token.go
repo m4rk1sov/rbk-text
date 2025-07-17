@@ -5,19 +5,21 @@ import "strings"
 func Tokenize(input string) ([]string, error) {
 	var tokens []string
 	var current strings.Builder
-	
+
 	runes := []rune(input)
 	for i := 0; i < len(runes); {
 		r := runes[i]
-		
+
 		switch {
 		case r == '(':
-			end := strings.IndexRune(input[i:], ')')
-			if end != -1 {
-				tokens = append(tokens, input[i:i+end+1])
-				i += end + 1
+			j := i
+			for j < len(runes) && runes[j] != ')' {
+				j++
+			}
+			if j < len(runes) && runes[j] == ')' {
+				tokens = append(tokens, string(runes[i:j+1]))
+				i = j + 1
 			} else {
-				// not a command, consume the rune
 				current.WriteRune(r)
 				i++
 			}
@@ -37,7 +39,7 @@ func Tokenize(input string) ([]string, error) {
 			i++
 		}
 	}
-	
+
 	return tokens, nil
 }
 

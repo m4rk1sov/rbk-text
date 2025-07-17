@@ -22,28 +22,28 @@ func main() {
 			log.Fatalf("failed to close the logs file: %v", err)
 		}
 	}(logFile)
-	
+
 	logger := jsonlog.New(logFile, jsonlog.LevelTrace)
 	logErr := jsonlog.New(os.Stderr, jsonlog.LevelError)
-	
+
 	if len(os.Args) < 3 {
 		logErr.PrintFatal("Must use the 3 arguments (example: go run ./cmd/cli input.txt output.txt", nil)
 	}
 	argIn := os.Args[1]
 	argOut := os.Args[2]
-	
+
 	input, err := parser.ReadFile(argIn)
 	if err != nil {
 		logger.PrintError("failed to read file", nil)
 		logErr.PrintError("failed to read file", nil)
 	}
-	
+
 	output, err := token.Tokenize(input)
 	if err != nil {
 		logger.PrintError("failed to tokenize the text", nil)
 		logErr.PrintError("failed to tokenize the text", nil)
 	}
-	
+
 	success, err := parser.WriteFile(argOut, output)
 	if err != nil {
 		logger.PrintError("failed to write tokens to a file", nil)
