@@ -6,7 +6,7 @@ import (
 	"unicode"
 )
 
-func TransformTokens(tokens []string) []string {
+func TransformTokens(tokens []string) ([]string, error) {
 	var result []string
 	var wordIndexes []int
 
@@ -23,7 +23,11 @@ func TransformTokens(tokens []string) []string {
 			//
 			for _, idx := range wordIndexes[start:] {
 				word := result[idx]
-				result[idx] = applyTransform(word, cmd.Type)
+				transformed, err := applyTransform(word, cmd.Type)
+				if err != nil {
+					return nil, err
+				}
+				result[idx] = transformed
 			}
 		} else {
 			result = append(result, token)
@@ -33,23 +37,23 @@ func TransformTokens(tokens []string) []string {
 		}
 	}
 
-	return result
+	return result, nil
 }
 
-func applyTransform(word, typ string) string {
+func applyTransform(word, typ string) (string, error) {
 	switch typ {
 	case "up":
-		return strings.ToUpper(word)
-	case "down":
-		return strings.ToLower(word)
+		return strings.ToUpper(word), nil
+	case "low":
+		return strings.ToLower(word), nil
 	case "cap":
-		return toTitle(word)
+		return toTitle(word), nil
 	case "hex":
 		return fromHex(word)
 	case "bin":
 		return fromBin(word)
 	default:
-		return word
+		return word, nil
 	}
 }
 
@@ -60,20 +64,20 @@ func toTitle(word string) string {
 	return strings.ToUpper(string(word[0])) + strings.ToLower(word[1:])
 }
 
-func fromHex(word string) string {
+func fromHex(word string) (string, error) {
 	n, err := strconv.ParseInt(word, 16, 64)
 	if err != nil {
-		return word
+		return word, err
 	}
-	return strconv.FormatInt(n, 10)
+	return strconv.FormatInt(n, 10), nil
 }
 
-func fromBin(word string) string {
+func fromBin(word string) (string, error) {
 	n, err := strconv.ParseInt(word, 2, 64)
 	if err != nil {
-		return word
+		return word, err
 	}
-	return strconv.FormatInt(n, 10)
+	return strconv.FormatInt(n, 10), nil
 }
 
 func isWord(s string) bool {

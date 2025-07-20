@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/m4rk1sov/rbk-text/internal/formatter"
 	"github.com/m4rk1sov/rbk-text/internal/jsonlog"
 	"github.com/m4rk1sov/rbk-text/internal/parser"
 	"github.com/m4rk1sov/rbk-text/internal/token"
@@ -8,12 +9,8 @@ import (
 	"os"
 )
 
-//type application struct {
-//	logger *jsonlog.Logger
-//}
-
 func main() {
-	logFile, err := os.OpenFile("logs.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
+	f, err := os.OpenFile("logs.txt", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		log.Fatalf("failed to open the logs file: %v", err)
 	}
@@ -21,35 +18,44 @@ func main() {
 		if err = logFile.Close(); err != nil {
 			log.Fatalf("failed to close the logs file: %v", err)
 		}
-	}(logFile)
+	}(f)
 
-	logger := jsonlog.New(logFile, jsonlog.LevelTrace)
-	logErr := jsonlog.New(os.Stderr, jsonlog.LevelError)
+	logInfo := jsonlog.New(os.Stdout, jsonlog.LevelInfo)
+	logFile := jsonlog.New(f, jsonlog.LevelTrace)
+	logError := jsonlog.New(os.Stderr, jsonlog.LevelError)
 
 	if len(os.Args) < 3 {
-		logErr.PrintFatal("Must use the 3 arguments (example: go run ./cmd/cli input.txt output.txt", nil)
+		logError.PrintFatal("Must use the 3 arguments (example: go run ./cmd/cli input.txt output.txt", nil)
 	}
 	argIn := os.Args[1]
 	argOut := os.Args[2]
 
 	input, err := parser.ReadFile(argIn)
 	if err != nil {
-		logger.PrintError("failed to read file", nil)
-		logErr.PrintError("failed to read file", nil)
+		logFile.PrintError("failed to read file", map[string]string{"error: ": err.Error()})
+		logError.PrintFatal("failed to read file", map[string]string{"error: ": err.Error()})
 	}
 
-	output, err := token.Tokenize(input)
+	tokens, err := token.Tokenize(input)
 	if err != nil {
-		logger.PrintError("failed to tokenize the text", nil)
-		logErr.PrintError("failed to tokenize the text", nil)
+		logFile.PrintError("failed to tokenize the text", map[string]string{"error: ": err.Error()})
+		logError.PrintError("failed to tokenize the text", map[string]string{"error: ": err.Error()})
 	}
 
-	success, err := parser.WriteFile(argOut, output)
+	transformed, err := parser.TransformTokens(tokens)
 	if err != nil {
-		logger.PrintError("failed to write tokens to a file", nil)
-		logErr.PrintError("failed to write tokens to a file", nil)
+		logFile.PrintError("failed to transform the text", map[string]string{"error: ": err.Error()})
+		logError.PrintError("failed to transform the text", map[string]string{"error: ": err.Error()})
 	}
-	if success {
-		logger.PrintInfo("successfully wrote to a file", nil)
+
+	formatted := formatter.JoinTokens(transformed)
+
+	err = parser.WriteFile(argOut, formatted)
+	if err != nil {
+		logFile.PrintError("failed to write tokens to a file", map[string]string{"error: ": err.Error()})
+		logError.PrintError("failed to write tokens to a file", map[string]string{"error: ": err.Error()})
 	}
+	logFile.PrintInfo("successfully wrote to a file", nil)
+	logInfo.PrintInfo("successfully wrote to a file", nil)
+
 }
