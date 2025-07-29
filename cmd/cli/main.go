@@ -30,13 +30,15 @@ func main() {
 	argIn := os.Args[1]
 	argOut := os.Args[2]
 
-	input, err := parser.ReadFile(argIn)
+	raw, err := parser.ReadFile(argIn)
 	if err != nil {
 		logFile.PrintError("failed to read file", map[string]string{"error: ": err.Error()})
 		logError.PrintFatal("failed to read file", map[string]string{"error: ": err.Error()})
 	}
 
-	tokens, err := token.Tokenize(input)
+	clean := token.Normalize(raw)
+
+	tokens, err := token.Tokenize(clean)
 	if err != nil {
 		logFile.PrintError("failed to tokenize the text", map[string]string{"error: ": err.Error()})
 		logError.PrintError("failed to tokenize the text", map[string]string{"error: ": err.Error()})
