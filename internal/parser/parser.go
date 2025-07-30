@@ -3,6 +3,7 @@ package parser
 import (
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 type Command struct {
@@ -59,4 +60,42 @@ func ParseCommand(token string) (*Command, bool) {
 	default:
 		return nil, false
 	}
+}
+
+func ToTitle(word string) string {
+	if len(word) == 0 {
+		return ""
+	}
+	runes := []rune(word)
+	runes[0] = unicode.ToUpper(runes[0])
+	return string(runes)
+}
+
+// IsWord simple bool return for handling only words, not the punctuation and quotes
+func IsWord(token string) bool {
+	if token == "" {
+		return false
+	}
+
+	// command checking
+	_, isCommand := ParseCommand(token)
+	if isCommand {
+		return false
+	}
+
+	// only punctuations
+	chars := `.,!?;:"'()\`
+	if strings.Trim(token, chars) == "" {
+		return false
+	}
+
+	return true
+}
+
+func IsPunctuation(token string) bool {
+	if token == "" {
+		return false
+	}
+	// A token is punctuation if it ONLY contains punctuation characters.
+	return strings.Trim(token, ".,!?;:") == ""
 }

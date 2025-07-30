@@ -1,10 +1,9 @@
 package token
 
 import (
-	"fmt"
+	"github.com/m4rk1sov/rbk-text/internal/parser"
 	"regexp"
 	"strings"
-	"unicode"
 )
 
 var contractions = map[string]bool{
@@ -51,33 +50,25 @@ var (
 	contractionRegex = regexp.MustCompile(`\b(\w+)\s*'\s*(\w+)\b`)
 	// no space before punctuation
 	spaceBeforePunctuation = regexp.MustCompile(`\s+([.,!?;:])`)
-	// space after a punctuation
-	spaceAfterPunctuation = regexp.MustCompile(`([.,!?;:])(\w)`)
+	// space after a punctuation and special characters
+	spaceAfterPunctuation       = regexp.MustCompile(`([.,!?;:])(\w)`)
+	spaceAfterSpecialCharacters = regexp.MustCompile(`([.,!?;:])([('"])`)
 	// spacing inside single quotes
 	singleQuoteSpace = regexp.MustCompile(`(?:^|\s)'\s*([^']*?)\s*'([.,!?;:]*)`)
 	// spacing inside double quotes
-	doubleQuoteSpace = regexp.MustCompile(`\s*"\s*([^"]*?)\s*"\s*`)
+	// \s*"\s*([^"]*?)\s*"\s* was old one
+	doubleQuoteSpace = regexp.MustCompile(`(?:^|\s)"\s*([^"]*?)\s*"([.,!?;:]*)`)
 	// multiple spaces to single
 	multipleSpaces = regexp.MustCompile(`\s+`)
 )
 
-func toTitle(word string) string {
-	if len(word) == 0 {
-		return ""
-	}
-	runes := []rune(word)
-	runes[0] = unicode.ToUpper(runes[0])
-	return string(runes)
-}
-
 func isContraction(word string) bool {
-	return contractions[word] || contractions[toTitle(strings.ToLower(word))] ||
+	return contractions[word] || contractions[parser.ToTitle(strings.ToLower(word))] ||
 		contractions[strings.ToLower(word)] || contractions[strings.ToUpper(word)]
 }
 
 // Normalize is a process to clean the raw string
 func Normalize(raw string) string {
-	fmt.Println(len(contractions))
 	result := multipleSpaces.ReplaceAllString(raw, " ")
 
 	// fix spaced-out contractions (e.g., "I ' m" to "I'm")
@@ -92,13 +83,27 @@ func Normalize(raw string) string {
 		return match
 	})
 
+	// spacing around quotes
+	result = singleQuoteSpace.ReplaceAllString(result, " '$1'$2")
+	result = doubleQuoteSpace.ReplaceAllString(result, ` "$1"$2 `)
+
 	// fix spacing around punctuation
 	result = spaceBeforePunctuation.ReplaceAllString(result, "$1")
 	result = spaceAfterPunctuation.ReplaceAllString(result, "$1 $2")
+	result = spaceAfterSpecialCharacters.ReplaceAllString(result, "$1 $2")
 
-	// spacing around quotes
-	result = singleQuoteSpace.ReplaceAllString(result, " '$1'$2")
-	result = doubleQuoteSpace.ReplaceAllString(result, ` "$1" `)
+	// in case when iside quotes
+	//result = strings.ReplaceAll(result, `. "`, `."`)
+	//result = strings.ReplaceAll(result, `, "`, `,"`)
+	//result = strings.ReplaceAll(result, `! "`, `!"`)
+	//result = strings.ReplaceAll(result, `? "`, `?"`)
+	//result = strings.ReplaceAll(result, `; "`, `;"`)
+	//
+	//result = strings.ReplaceAll(result, `. '`, `.'`)
+	//result = strings.ReplaceAll(result, `, '`, `,'`)
+	//result = strings.ReplaceAll(result, `! '`, `!'`)
+	//result = strings.ReplaceAll(result, `? '`, `?'`)
+	//result = strings.ReplaceAll(result, `; '`, `;'`)
 
 	// cleanup
 	result = multipleSpaces.ReplaceAllString(result, " ")

@@ -1,42 +1,8 @@
-package formatter
+package parser
 
 import (
-	"github.com/m4rk1sov/rbk-text/internal/parser"
 	"strings"
 )
-
-func isWord(token string) bool {
-	if token == "" {
-		return false
-	}
-
-	// command checking
-	_, isCommand := parser.ParseCommand(token)
-	if isCommand {
-		return false
-	}
-
-	// newline sequence
-	if strings.HasPrefix(token, "\\n") {
-		return false
-	}
-
-	// only punctuations
-	chars := `.,!?;:"'()\`
-	if strings.Trim(token, chars) == "" {
-		return false
-	}
-
-	return true
-}
-
-func isPunctuation(token string) bool {
-	if token == "" {
-		return false
-	}
-	// A token is punctuation if it ONLY contains punctuation characters.
-	return strings.Trim(token, ".,!?;:") == ""
-}
 
 func isNewlineSequence(token string) bool {
 	return strings.HasPrefix(token, "\\n")
@@ -69,7 +35,7 @@ func JoinTokens(tokens []string) string {
 		addSpace := true
 
 		// Rule 1: No space before punctuation or a closing bracket.
-		if isPunctuation(token) || token == ")" {
+		if IsPunctuation(token) || token == ")" {
 			addSpace = false
 		}
 
@@ -80,27 +46,54 @@ func JoinTokens(tokens []string) string {
 
 		// Rule 3: The quote/apostrophe logic using state.
 		if token == "'" {
-			// If the previous token is a word, this MUST be a contraction or a closing quote. No space needed.
-			// Examples: "don'", "Casey's", "word'"
-			if isWord(prevToken) {
+			if inSingleQuote {
 				addSpace = false
+			} else {
+				if prevToken == "(" || IsPunctuation(prevToken) {
+					addSpace = false
+				} else {
+					addSpace = true
+				}
 			}
+			inSingleQuote = !inSingleQuote
 		}
 
 		if prevToken == "'" {
-			// If the previous token was a single quote, we need to decide if we just entered a quote.
 			if inSingleQuote {
-				// We just entered a quote (e.g., 'word). No space.
 				addSpace = false
+			} else {
+				if IsPunctuation(token) || token == ")" {
+					addSpace = false
+				} else {
+					addSpace = true
+				}
 			}
 		}
 
 		// Rule 4: Same logic for double quotes.
-		if token == `"` && isWord(prevToken) {
-			addSpace = false
+		if token == `"` {
+			if inDoubleQuote {
+				addSpace = false
+			} else {
+				if prevToken == "(" || IsPunctuation(prevToken) {
+					addSpace = false
+				} else {
+					addSpace = true
+				}
+			}
+			inDoubleQuote = !inDoubleQuote
 		}
-		if prevToken == `"` && inDoubleQuote {
-			addSpace = false
+
+		if prevToken == `"` {
+			if inDoubleQuote {
+				addSpace = false
+			} else {
+				if IsPunctuation(token) || token == ")" {
+					addSpace = false
+				} else {
+					addSpace = true
+				}
+			}
 		}
 
 		// Rule 5: Checking for \ (in case of \n)
@@ -119,13 +112,6 @@ func JoinTokens(tokens []string) string {
 		}
 		b.WriteString(token)
 
-		// Update state *after* processing the current token.
-		if token == "'" {
-			inSingleQuote = !inSingleQuote
-		}
-		if token == `"` {
-			inDoubleQuote = !inDoubleQuote
-		}
 	}
 
 	return b.String()

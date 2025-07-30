@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/m4rk1sov/rbk-text/internal/formatter"
 	"github.com/m4rk1sov/rbk-text/internal/jsonlog"
 	"github.com/m4rk1sov/rbk-text/internal/parser"
 	"github.com/m4rk1sov/rbk-text/internal/token"
@@ -30,7 +29,7 @@ func main() {
 	argIn := os.Args[1]
 	argOut := os.Args[2]
 
-	raw, err := parser.ReadFile(argIn)
+	raw, err := ReadFile(argIn)
 	if err != nil {
 		logFile.PrintError("failed to read file", map[string]string{"error: ": err.Error()})
 		logError.PrintFatal("failed to read file", map[string]string{"error: ": err.Error()})
@@ -50,9 +49,11 @@ func main() {
 		logError.PrintError("failed to transform the text", map[string]string{"error: ": err.Error()})
 	}
 
-	formatted := formatter.JoinTokens(transformed)
+	formatted := parser.JoinTokens(transformed)
 
-	err = parser.WriteFile(argOut, formatted)
+	formattedNormalized := token.Normalize(formatted)
+
+	err = WriteFile(argOut, formattedNormalized)
 	if err != nil {
 		logFile.PrintError("failed to write tokens to a file", map[string]string{"error: ": err.Error()})
 		logError.PrintError("failed to write tokens to a file", map[string]string{"error: ": err.Error()})
